@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [isEmployer, setIsEmployer] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -62,6 +63,9 @@ export default function SignupPage() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
+          data: {
+            is_employer: isEmployer,
+          },
         },
       })
 
@@ -169,6 +173,35 @@ export default function SignupPage() {
                   required
                   disabled={loading}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Account Type</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsEmployer(false)}
+                    disabled={loading}
+                    className={`rounded-lg border-2 p-4 text-left transition-colors ${!isEmployer
+                      ? "border-orange-600 bg-orange-50"
+                      : "border-slate-200 hover:border-slate-300"
+                      }`}
+                  >
+                    <p className="font-semibold text-slate-900">Employee</p>
+                    <p className="text-xs text-slate-600">Access onboarding content</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEmployer(true)}
+                    disabled={loading}
+                    className={`rounded-lg border-2 p-4 text-left transition-colors ${isEmployer
+                      ? "border-orange-600 bg-orange-50"
+                      : "border-slate-200 hover:border-slate-300"
+                      }`}
+                  >
+                    <p className="font-semibold text-slate-900">Employer</p>
+                    <p className="text-xs text-slate-600">Manage documents</p>
+                  </button>
+                </div>
               </div>
               {error && (
                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
