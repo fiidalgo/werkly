@@ -152,7 +152,7 @@ export default function Home() {
               Join forward-thinking companies using AI to make employee training better
             </p>
             <Link href="/signup">
-              <Button size="lg" className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-lg px-10 h-14 rounded-lg shadow-md hover:shadow-lg transition-all">
+              <Button size="lg" className="bg-orange-600 hover:bg-orange-700 hover:scale-105 text-white font-semibold text-lg px-10 h-14 rounded-lg shadow-md hover:shadow-xl transition-all">
                 Start for free
               </Button>
             </Link>
