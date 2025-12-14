@@ -1,3 +1,7 @@
 export default function Home() {
-  return
+  return (
+    <div>
+      <h1>Werkly</h1>
+    </div>
+  )
 }
