@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { DocumentUpload } from "@/components/documents/document-upload"
+import { EmployeeManagement } from "@/components/employees/employee-management"
 
-export default async function DocumentsPage() {
+export default async function EmployeesPage() {
   const supabase = await createClient()
 
   const {
@@ -22,12 +22,12 @@ export default async function DocumentsPage() {
   return (
     <div className="p-6">
       <div className="max-w-6xl">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Documents</h1>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Employees</h1>
         <p className="text-slate-600 mb-8">
-          Upload and manage company documentation
+          Manage your company's employees
         </p>
 
-        <DocumentUpload userId={user.id} />
+        <EmployeeManagement />
       </div>
     </div>
   )

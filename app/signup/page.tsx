@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { createCompanyForUser } from "@/lib/supabase/companies"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [companyName, setCompanyName] = useState("")
   const [isEmployer, setIsEmployer] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -57,6 +59,12 @@ export default function SignupPage() {
       return
     }
 
+    if (isEmployer && !companyName.trim()) {
+      setError("Company name is required for employers")
+      setLoading(false)
+      return
+    }
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -78,6 +86,22 @@ export default function SignupPage() {
 
       if (data?.user?.identities?.length === 0) {
         throw new Error("This email is already registered. Please log in instead.")
+      }
+
+      // Create company for employer
+      if (isEmployer && data.user && data.session) {
+        // Wait for the profile trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 1500))
+
+        const { error: companyError } = await createCompanyForUser(
+          supabase,
+          data.user.id,
+          companyName.trim()
+        )
+
+        if (companyError) {
+          console.error("Failed to create company:", companyError.message)
+        }
       }
 
       setSuccess(true)
@@ -203,6 +227,20 @@ export default function SignupPage() {
                   </button>
                 </div>
               </div>
+              {isEmployer && (
+                <div className="space-y-2">
+                  <Label htmlFor="company-name">Company Name</Label>
+                  <Input
+                    id="company-name"
+                    type="text"
+                    placeholder="Your Company Inc."
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    required={isEmployer}
+                    disabled={loading}
+                  />
+                </div>
+              )}
               {error && (
                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
                   {error}
