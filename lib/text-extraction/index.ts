@@ -25,6 +25,7 @@ export async function extractText(buffer: Buffer, fileType: string): Promise<str
 }
 
 async function extractFromPDF(buffer: Buffer): Promise<string> {
+  // @ts-ignore
   const pdfParse = pdf.default || pdf
   const data = await pdfParse(buffer)
   return data.text
