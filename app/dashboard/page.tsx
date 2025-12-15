@@ -11,6 +11,12 @@ interface Message {
   content: string
 }
 
+interface Suggestion {
+  id: string
+  filename: string
+  reason: string
+}
+
 export default function DashboardPage() {
   const searchParams = useSearchParams()
   const conversationId = searchParams?.get('conversation')
@@ -19,6 +25,8 @@ export default function DashboardPage() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(conversationId)
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -30,13 +38,31 @@ export default function DashboardPage() {
   }, [messages])
 
   useEffect(() => {
+    // Don't reload if we're in the middle of creating a conversation
+    if (isCreatingConversation) {
+      return
+    }
+
     if (conversationId) {
       loadConversation(conversationId)
     } else {
       setMessages([])
       setCurrentConversationId(null)
+      loadSuggestions()
     }
-  }, [conversationId])
+  }, [conversationId, isCreatingConversation])
+
+  const loadSuggestions = async () => {
+    try {
+      const response = await fetch('/api/suggestions')
+      if (response.ok) {
+        const data = await response.json()
+        setSuggestions(data.suggestions || [])
+      }
+    } catch (error) {
+      console.error('Error loading suggestions:', error)
+    }
+  }
 
   const loadConversation = async (id: string) => {
     try {
@@ -81,6 +107,7 @@ export default function DashboardPage() {
 
     try {
       if (!convId && messages.length === 0) {
+        setIsCreatingConversation(true)
         const title = generateTitle(userContent)
         const createResponse = await fetch('/api/conversations', {
           method: 'POST',
@@ -94,8 +121,7 @@ export default function DashboardPage() {
           setCurrentConversationId(convId)
           window.history.pushState({}, '', `/dashboard?conversation=${convId}`)
 
-          // Notify sidebar to refresh conversation list
-          window.dispatchEvent(new Event('conversationUpdated'))
+          // Don't dispatch conversationUpdated yet - wait until messages are saved
         }
       }
 
@@ -146,7 +172,8 @@ export default function DashboardPage() {
       if (convId && assistantMessage) {
         await saveMessage(convId, 'assistant', assistantMessage)
 
-        // Notify sidebar to refresh conversation list
+        // Now that both messages are saved, notify sidebar and allow reloading
+        setIsCreatingConversation(false)
         window.dispatchEvent(new Event('conversationUpdated'))
       }
     } catch (error) {
@@ -160,6 +187,7 @@ export default function DashboardPage() {
       ])
     } finally {
       setIsLoading(false)
+      setIsCreatingConversation(false)
     }
   }
 
@@ -223,6 +251,67 @@ export default function DashboardPage() {
                 Press <kbd className="px-2 py-1 bg-slate-100 rounded text-xs font-mono">⌘</kbd> + <kbd className="px-2 py-1 bg-slate-100 rounded text-xs font-mono">Enter</kbd> to send
               </p>
             </div>
+
+            {/* Suggestions */}
+            {suggestions.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Suggested for you
+                </h2>
+                <div className="grid grid-cols-1 gap-3">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      onClick={() => setInput(`Tell me about ${suggestion.filename}`)}
+                      className="group text-left p-4 rounded-lg border border-slate-200 hover:border-orange-500 hover:bg-orange-50 transition-all"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-5 h-5 text-slate-400 group-hover:text-orange-600 transition-colors"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-slate-900 group-hover:text-orange-600 transition-colors truncate">
+                            {suggestion.filename.replace(/\.md$/, '').replace(/-/g, ' ')}
+                          </div>
+                          <div className="text-sm text-slate-500 mt-1">
+                            {suggestion.reason}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-5 h-5 text-slate-300 group-hover:text-orange-600 transition-colors"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
