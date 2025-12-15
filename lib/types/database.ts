@@ -114,6 +114,55 @@ export interface Database {
           created_at?: string
         }
       }
+      conversations: {
+        Row: {
+          id: string
+          user_id: string
+          company_id: string
+          title: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          company_id: string
+          title: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          company_id?: string
+          title?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          role: 'user' | 'assistant' | 'system'
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          role: 'user' | 'assistant' | 'system'
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          role?: 'user' | 'assistant' | 'system'
+          content?: string
+          created_at?: string
+        }
+      }
     }
     Functions: {
       create_company_for_user: {
@@ -140,6 +189,29 @@ export interface Database {
           content: string
           similarity: number
           metadata: Record<string, any>
+        }[]
+      }
+      add_employee_to_company: {
+        Args: {
+          p_employer_id: string
+          p_employee_email: string
+        }
+        Returns: {
+          success?: boolean
+          error?: string
+          employee_id?: string
+          company_id?: string
+        }
+      }
+      get_company_employees: {
+        Args: {
+          p_employer_id: string
+        }
+        Returns: {
+          id: string
+          email: string
+          is_employer: boolean
+          created_at: string
         }[]
       }
     }
