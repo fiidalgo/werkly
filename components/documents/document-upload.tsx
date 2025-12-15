@@ -36,6 +36,13 @@ export function DocumentUpload({ userId }: DocumentUploadProps) {
 
   useEffect(() => {
     loadDocuments()
+
+    // Poll for document status updates every 5 seconds
+    const interval = setInterval(() => {
+      loadDocuments()
+    }, 5000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const loadDocuments = async () => {
@@ -163,7 +170,7 @@ export function DocumentUpload({ userId }: DocumentUploadProps) {
         setUploadProgress(prev => ({ ...prev, [file.name]: 50 }))
 
         // Create document record
-        const { error: dbError } = await supabase
+        const { data: newDocument, error: dbError } = await supabase
           .from('documents')
           .insert({
             company_id: companyId,
@@ -174,12 +181,23 @@ export function DocumentUpload({ userId }: DocumentUploadProps) {
             file_size: file.size,
             status: 'pending'
           })
+          .select()
+          .single()
 
-        if (dbError) {
-          throw dbError
+        if (dbError || !newDocument) {
+          throw dbError || new Error('Failed to create document record')
         }
 
         setUploadProgress(prev => ({ ...prev, [file.name]: 100 }))
+
+        // Trigger processing in background
+        fetch('/api/documents/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentId: newDocument.id }),
+        }).catch(err => {
+          console.error('Error triggering document processing:', err)
+        })
       }
 
       // Reload documents
