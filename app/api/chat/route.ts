@@ -52,32 +52,45 @@ Key guidelines:
           const queryEmbedding = await createEmbedding(lastMessage.content)
           console.log(`Query embedding generated (length: ${queryEmbedding.length})`)
 
-          const { data: matches, error: searchError } = await supabase.rpc('match_documents', {
+          // Search with lower threshold - similarity scores of 0.35+ are good matches
+          const { data: allMatches, error: searchError } = await supabase.rpc('match_documents', {
             query_embedding: queryEmbedding,
             query_company_id: profile.company_id,
-            match_threshold: 0.5,
-            match_count: 5,
+            match_threshold: 0.25, // Low threshold to see all potential matches
+            match_count: 10,
           })
 
           if (searchError) {
             console.error('Search error:', searchError)
-          } else if (matches && matches.length > 0) {
-            console.log(`Found ${matches.length} relevant chunks with similarities:`,
-              matches.map((m: any) => m.similarity?.toFixed(3)).join(', '))
+          } else if (allMatches && allMatches.length > 0) {
+            console.log(`Found ${allMatches.length} potential chunks:`)
+            allMatches.forEach((m: any, i: number) => {
+              console.log(`  ${i + 1}. Similarity: ${m.similarity?.toFixed(3)} - ${m.metadata?.filename || 'Unknown'}`)
+            })
 
-            const contextText = matches
-              .map((result: any, index: number) => {
-                return `[Source ${index + 1}: ${result.metadata?.filename || 'Unknown'}]
+            // Filter to best matches (threshold 0.35 - good for semantic search)
+            const matches = allMatches.filter((m: any) => m.similarity >= 0.35)
+
+            if (matches.length > 0) {
+              console.log(`Using top ${matches.length} chunks (similarity >= 0.35)`)
+
+              const contextText = matches
+                .slice(0, 5) // Only use top 5
+                .map((result: any, index: number) => {
+                  return `[Source ${index + 1}: ${result.metadata?.filename || 'Unknown'}]
 ${result.content}
 ---`
-              })
-              .join('\n\n')
+                })
+                .join('\n\n')
 
-            systemMessage += `\n\n## Relevant Company Documentation\n\nUse the following context to answer the user's question. Reference specific sources when applicable.\n\n${contextText}`
+              systemMessage += `\n\n## Relevant Company Documentation\n\nUse the following context to answer the user's question. Reference specific sources when applicable.\n\n${contextText}`
 
-            console.log(`Added ${matches.length} context chunks to prompt`)
+              console.log(`Added ${Math.min(matches.length, 5)} context chunks to prompt`)
+            } else {
+              console.log('No chunks above 0.35 similarity threshold. Best match:', allMatches[0]?.similarity?.toFixed(3))
+            }
           } else {
-            console.log('No relevant context found for query (threshold: 0.5)')
+            console.log('No embeddings found for this company. Have documents been uploaded and processed?')
           }
         }
       } catch (contextError) {
