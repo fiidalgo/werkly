@@ -12,11 +12,18 @@ interface SidebarProps {
   email: string
 }
 
+interface Conversation {
+  id: string
+  title: string
+  updated_at: string
+}
+
 export function Sidebar({ isEmployer, email }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isHomeHovered, setIsHomeHovered] = useState(false)
+  const [conversations, setConversations] = useState<Conversation[]>([])
 
   // Load collapsed state from localStorage on mount
   useEffect(() => {
@@ -26,6 +33,35 @@ export function Sidebar({ isEmployer, email }: SidebarProps) {
     }
   }, [])
 
+  // Load conversations on mount and when pathname changes
+  useEffect(() => {
+    loadConversations()
+  }, [pathname])
+
+  // Listen for conversation updates
+  useEffect(() => {
+    const handleConversationUpdate = () => {
+      loadConversations()
+    }
+
+    window.addEventListener('conversationUpdated', handleConversationUpdate)
+    return () => {
+      window.removeEventListener('conversationUpdated', handleConversationUpdate)
+    }
+  }, [])
+
+  const loadConversations = async () => {
+    try {
+      const response = await fetch('/api/conversations')
+      if (response.ok) {
+        const data = await response.json()
+        setConversations(data.conversations || [])
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error)
+    }
+  }
+
   // Save collapsed state to localStorage whenever it changes
   const toggleCollapsed = () => {
     const newState = !isCollapsed
@@ -34,8 +70,8 @@ export function Sidebar({ isEmployer, email }: SidebarProps) {
   }
 
   const handleNewChat = () => {
-    // TODO: Create new chat
     router.push("/dashboard")
+    router.refresh()
   }
 
   const navigation = [
@@ -56,6 +92,16 @@ export function Sidebar({ isEmployer, email }: SidebarProps) {
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+        </svg>
+      ),
+      employerOnly: true,
+    } as const,
+    {
+      name: "Employees",
+      href: "/dashboard/employees" as const,
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
         </svg>
       ),
       employerOnly: true,
@@ -142,45 +188,68 @@ export function Sidebar({ isEmployer, email }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {filteredNav.map((item) => {
-          const isActive = !item.isAction && pathname === item.href
+      <nav className="flex-1 flex flex-col px-3 py-4 overflow-hidden">
+        <div className="space-y-1 flex-shrink-0">
+          {filteredNav.map((item) => {
+            const isActive = !item.isAction && pathname === item.href
 
-          if (item.isAction) {
+            if (item.isAction) {
+              return (
+                <button
+                  key={item.name}
+                  onClick={item.action}
+                  className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                  title={isCollapsed ? item.name : undefined}
+                >
+                  <span className="flex-shrink-0">{item.icon}</span>
+                  <span className="overflow-hidden whitespace-nowrap">
+                    {item.name}
+                  </span>
+                </button>
+              )
+            }
+
             return (
-              <button
+              <Link
                 key={item.name}
-                onClick={item.action}
-                className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-slate-700 hover:bg-slate-100"
+                )}
                 title={isCollapsed ? item.name : undefined}
               >
                 <span className="flex-shrink-0">{item.icon}</span>
                 <span className="overflow-hidden whitespace-nowrap">
                   {item.name}
                 </span>
-              </button>
+              </Link>
             )
-          }
+          })}
+        </div>
 
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-orange-50 text-orange-600"
-                  : "text-slate-700 hover:bg-slate-100"
-              )}
-              title={isCollapsed ? item.name : undefined}
-            >
-              <span className="flex-shrink-0">{item.icon}</span>
-              <span className="overflow-hidden whitespace-nowrap">
-                {item.name}
-              </span>
-            </Link>
-          )
-        })}
+        {/* Conversation History */}
+        {!isCollapsed && conversations.length > 0 && (
+          <div className="flex-1 overflow-hidden flex flex-col mt-6">
+            <div className="text-xs font-semibold text-slate-500 px-3 mb-2">
+              Recent Chats
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-1">
+              {conversations.map((conv) => (
+                <Link
+                  key={conv.id}
+                  href={`/dashboard?conversation=${conv.id}`}
+                  className="block px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg transition-colors truncate"
+                  title={conv.title}
+                >
+                  {conv.title}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Account settings at bottom */}
